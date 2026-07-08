@@ -8,6 +8,7 @@
         :root {
             --paper-width: 210.08mm;
             --paper-height: 297.04mm;
+            --mobile-print-scale: 0.88;
             --ink: #000;
             --muted: #555;
             --line: #000;
@@ -1057,6 +1058,11 @@
                 zoom: 1;
                 break-after: page;
                 page-break-after: always;
+            }
+
+            html.mobile-print .sheet {
+                transform: scale(var(--mobile-print-scale));
+                transform-origin: top center;
             }
 
             .sheet:last-child {
@@ -6136,6 +6142,8 @@
             const storageKey = 'inspeksi-v13-pdf-layout-draft';
             const markSize = 28;
             const paperWidthPx = 210.08 * 96 / 25.4;
+            const mobilePreviewInsetPx = 44;
+            const mobilePreviewMaxScale = 0.9;
             const mobileSheetQuery = window.matchMedia('(max-width: 820px)');
             let mode = 'mark';
             let marks = [];
@@ -6143,9 +6151,13 @@
             let pendingNumberInput = null;
 
             function updateSheetScreenScale() {
-                const availableWidth = Math.max(window.innerWidth - 18, 280);
-                const scale = mobileSheetQuery.matches ? Math.min(1, availableWidth / paperWidthPx) : 1;
+                const availableWidth = Math.max(window.innerWidth - mobilePreviewInsetPx, 260);
+                const scale = mobileSheetQuery.matches ? Math.min(mobilePreviewMaxScale, availableWidth / paperWidthPx) : 1;
                 document.documentElement.style.setProperty('--sheet-screen-scale', scale.toFixed(4));
+            }
+
+            function setMobilePrintMode(enabled) {
+                document.documentElement.classList.toggle('mobile-print', Boolean(enabled && mobileSheetQuery.matches));
             }
 
             function setMode(nextMode) {
@@ -6428,8 +6440,12 @@
                 commitPendingNumberInput();
                 autoGrowAll();
                 localStorage.setItem(storageKey, JSON.stringify(collectDraft()));
+                setMobilePrintMode(true);
                 window.print();
-                window.setTimeout(updateSheetScreenScale, 300);
+                window.setTimeout(() => {
+                    setMobilePrintMode(false);
+                    updateSheetScreenScale();
+                }, 300);
             });
 
             form.addEventListener('input', (event) => {
@@ -6458,9 +6474,10 @@
             window.addEventListener('beforeprint', () => {
                 commitPendingNumberInput();
                 autoGrowAll();
-                document.documentElement.style.setProperty('--sheet-screen-scale', '1');
+                setMobilePrintMode(true);
             });
             window.addEventListener('afterprint', () => {
+                setMobilePrintMode(false);
                 updateSheetScreenScale();
             });
 

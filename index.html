@@ -984,46 +984,98 @@
         }
 
         @media screen and (max-width: 820px) {
-            body {
-                overflow-x: auto;
-            }
-
-            .toolbar {
-                position: static;
-                align-items: stretch;
-                flex-direction: column;
-                padding: 10px;
-            }
-
-            .toolbar-actions {
-                display: grid;
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                width: 100%;
-            }
-
-            .tool-btn {
-                min-width: 0;
-                padding: 7px 8px;
-                line-height: 1.15;
-            }
-
-            #inspectionForm {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                gap: 12px;
-                padding: 10px 0 18px;
-            }
-
-            .sheet {
-                width: var(--paper-width);
-                min-height: var(--paper-height);
-                margin: 0 auto;
-                padding: 14mm 15mm 25mm;
-                transform-origin: top center;
-                zoom: var(--sheet-screen-scale, 1);
-            }
+        body {
+            overflow-x: auto;
         }
+
+        .toolbar {
+            position: static;
+            align-items: stretch;
+            flex-direction: column;
+            padding: 10px;
+        }
+
+        .toolbar-actions {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            width: 100%;
+        }
+
+        .tool-btn {
+            min-width: 0;
+            padding: 7px 8px;
+            line-height: 1.15;
+        }
+
+        #inspectionForm {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0 18px;
+        }
+
+        .sheet {
+            width: var(--paper-width);
+            min-height: var(--paper-height);
+            margin: 0 auto;
+
+            /* Ditambah dari 25mm agar footer punya ruang */
+            padding: 14mm 15mm 34mm;
+
+            transform-origin: top center;
+            zoom: var(--sheet-screen-scale, 1);
+        }
+
+        /* Footer mobile */
+        .footer {
+            left: 12mm;
+            right: 12mm;
+            bottom: 5mm;
+
+            grid-template-columns: minmax(0, 1fr) 7mm;
+            column-gap: 2mm;
+            align-items: end;
+
+            font-size: 7.2pt;
+            line-height: 1.25;
+        }
+
+        /* Izinkan teks turun ke baris berikutnya */
+        .footer-contact,
+        .footer-web,
+        .footer-group {
+            white-space: normal;
+        }
+
+        /* Kontak dibuat dua kolom */
+        .footer-channels {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            column-gap: 4mm;
+            row-gap: 1.2mm;
+            margin-bottom: 1mm;
+        }
+
+        /* Judul kontak memenuhi dua kolom */
+        .footer-channel-label {
+            grid-column: 1 / -1;
+        }
+
+        .footer-channel {
+            min-width: 0;
+        }
+
+        /* Username panjang tidak keluar dari footer */
+        .footer-channel span {
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+
+        .page-number {
+            align-self: end;
+            padding-bottom: 0.5mm;
+        }
+    }
 
         @page {
             size: 210.08mm 297.04mm;

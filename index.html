@@ -290,7 +290,7 @@
         }
 
         .annotation-arrow {
-            stroke: #c00000;
+            stroke: #7a7a7a;
             stroke-width: 1.8;
             fill: none;
             pointer-events: none;
@@ -299,14 +299,14 @@
         }
 
         .annotation-arrow-head {
-            fill: #c00000;
+            fill: #7a7a7a;
             print-color-adjust: exact;
             -webkit-print-color-adjust: exact;
         }
 
         .annotation-circle {
             fill: rgba(185, 28, 28, 0.06);
-            stroke: #c00000;
+            stroke: #7a7a7a;
             stroke-width: 2;
             cursor: move;
             touch-action: none;
@@ -504,12 +504,6 @@
             gap: 1.5mm;
             white-space: nowrap;
             cursor: pointer;
-        }
-
-        #inspectionForm.check-erase-mode .option,
-        #inspectionForm.check-erase-mode .circle-choice,
-        #inspectionForm.check-erase-mode .grade-choice {
-            cursor: not-allowed;
         }
 
         .option input {
@@ -1412,7 +1406,6 @@
             <button type="button" class="tool-btn" data-mark-mode="erase">Hapus</button>
             <button type="button" class="tool-btn" id="undoMark">Undo</button>
             <button type="button" class="tool-btn" id="clearMarks">Clear lingkar</button>
-            <button type="button" class="tool-btn" id="clearChecks" aria-pressed="false">Hapus ceklis</button>
             <button type="button" class="tool-btn" id="resetForm">Reset</button>
             <button type="button" class="tool-btn primary" id="printPage">Print</button>
         </div>
@@ -6413,7 +6406,6 @@
         (() => {
             const form = document.getElementById('inspectionForm');
             const draftState = document.getElementById('draftState');
-            const clearChecksButton = document.getElementById('clearChecks');
             const storageKey = 'inspeksi-v13-pdf-layout-draft';
             const annotationRadius = 4;
             const annotationTextOffset = 16;
@@ -6422,7 +6414,6 @@
             const mobileScreenMargin = 34;
             const mobileScreenScaleFactor = 0.92;
             let mode = 'mark';
-            let checkEraseMode = false;
             let marks = [];
             let annotationIdCounter = 0;
             let activeAnnotationDrag = null;
@@ -6457,17 +6448,6 @@
                 );
             }
 
-            function setCheckEraseMode(isActive) {
-                checkEraseMode = isActive;
-                form.classList.toggle('check-erase-mode', checkEraseMode);
-                clearChecksButton.classList.toggle('active', checkEraseMode);
-                clearChecksButton.setAttribute('aria-pressed', String(checkEraseMode));
-
-                if (checkEraseMode) {
-                    draftState.textContent = 'Mode hapus ceklis aktif';
-                }
-            }
-
             function getChecklistFieldFromTarget(target) {
                 if (!(target instanceof Element)) {
                     return null;
@@ -6500,14 +6480,19 @@
 
             function setMode(nextMode) {
                 commitPendingNumberInput();
-                setCheckEraseMode(false);
-                mode = nextMode;
+                mode = nextMode === 'erase' && mode === 'erase' ? 'mark' : nextMode;
                 document.querySelectorAll('[data-mark-mode]').forEach((button) => {
                     button.classList.toggle('active', button.dataset.markMode === mode);
                 });
                 document.querySelectorAll('.mark-surface').forEach((surface) => {
                     surface.style.cursor = mode === 'erase' ? 'not-allowed' : (mode === 'number' ? 'text' : 'crosshair');
                 });
+
+                if (mode === 'erase') {
+                    draftState.textContent = 'Mode hapus aktif';
+                } else if (nextMode === 'erase') {
+                    draftState.textContent = 'Mode lingkar aktif';
+                }
             }
 
             function createAnnotationId() {
@@ -6859,7 +6844,7 @@
                         });
 
                         box.addEventListener('pointerdown', (event) => {
-                            if (event.target === deleteButton || !textarea.readOnly) {
+                            if (event.target === deleteButton) {
                                 return;
                             }
 
@@ -6867,6 +6852,10 @@
                                 event.preventDefault();
                                 event.stopPropagation();
                                 deleteAnnotation(index);
+                                return;
+                            }
+
+                            if (!textarea.readOnly) {
                                 return;
                             }
 
@@ -7021,7 +7010,6 @@
                     return;
                 }
 
-                setCheckEraseMode(false);
                 applyDraft(previousSnapshot);
                 setCurrentSnapshot(previousSnapshot);
                 clearTimeout(saveTimer);
@@ -7188,10 +7176,6 @@
 
             document.querySelectorAll('.mark-surface').forEach((surface) => {
                 surface.addEventListener('click', (event) => {
-                    if (checkEraseMode) {
-                        return;
-                    }
-
                     const targetElement = event.target instanceof Element ? event.target : null;
 
                     if (!targetElement) {
@@ -7239,11 +7223,6 @@
                 recordHistoryChange();
             });
 
-            clearChecksButton.addEventListener('click', () => {
-                commitPendingNumberInput();
-                setCheckEraseMode(!checkEraseMode);
-            });
-
             document.getElementById('resetForm').addEventListener('click', () => {
                 if (!window.confirm('Reset semua isi form?')) {
                     return;
@@ -7254,7 +7233,7 @@
                 marks = [];
                 renderMarks();
                 autoGrowAll();
-                setCheckEraseMode(false);
+                setMode('mark');
                 localStorage.removeItem(storageKey);
                 resetUndoHistory();
                 draftState.textContent = 'Draft kosong';
@@ -7270,7 +7249,7 @@
             });
 
             form.addEventListener('click', (event) => {
-                if (!checkEraseMode) {
+                if (mode !== 'erase') {
                     return;
                 }
 
@@ -7284,12 +7263,12 @@
                 event.stopPropagation();
 
                 if (!field.checked) {
-                    draftState.textContent = 'Pilih ceklis yang sudah terisi';
                     return;
                 }
 
                 field.checked = false;
-                draftState.textContent = 'Ceklis dihapus';
+                field.dispatchEvent(new Event('change', { bubbles: true }));
+                draftState.textContent = 'Pilihan dihapus';
                 recordHistoryChange();
             }, true);
 

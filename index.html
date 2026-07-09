@@ -13,6 +13,8 @@
             --line: #000;
             --screen: #e5e7eb;
             --accent: #b91c1c;
+            --sheet-screen-scale: 1;
+            --mobile-print-scale: 0.88;
         }
 
         * {
@@ -409,6 +411,12 @@
             gap: 1.5mm;
             white-space: nowrap;
             cursor: pointer;
+        }
+
+        #inspectionForm.check-erase-mode .option,
+        #inspectionForm.check-erase-mode .circle-choice,
+        #inspectionForm.check-erase-mode .grade-choice {
+            cursor: not-allowed;
         }
 
         .option input {
@@ -1224,8 +1232,14 @@
                 padding: 14mm 15mm 25mm;
                 box-shadow: none;
                 zoom: 1;
+                transform: none;
                 break-after: page;
                 page-break-after: always;
+            }
+
+            html.mobile-print .sheet {
+                transform: scale(var(--mobile-print-scale));
+                transform-origin: top center;
             }
 
             .sheet:last-child {
@@ -1301,7 +1315,7 @@
             <button type="button" class="tool-btn" data-mark-mode="erase">Hapus</button>
             <button type="button" class="tool-btn" id="undoMark">Undo</button>
             <button type="button" class="tool-btn" id="clearMarks">Clear lingkar</button>
-            <button type="button" class="tool-btn" id="clearChecks">Kosongkan checklist</button>
+            <button type="button" class="tool-btn" id="clearChecks" aria-pressed="false">Hapus ceklis</button>
             <button type="button" class="tool-btn" id="resetForm">Reset</button>
             <button type="button" class="tool-btn primary" id="printPage">Print</button>
         </div>
@@ -6302,12 +6316,19 @@
         (() => {
             const form = document.getElementById('inspectionForm');
             const draftState = document.getElementById('draftState');
+            const clearChecksButton = document.getElementById('clearChecks');
             const storageKey = 'inspeksi-v13-pdf-layout-draft';
             const markSize = 28;
             const paperWidthPx = 210.08 * 96 / 25.4;
             const mobileSheetQuery = window.matchMedia('(max-width: 820px)');
+            const mobileScreenMargin = 34;
+            const mobileScreenScaleFactor = 0.92;
             let mode = 'mark';
+            let checkEraseMode = false;
             let marks = [];
+            let undoStack = [];
+            let currentSnapshot = null;
+            let currentSnapshotKey = '';
             let saveTimer = null;
             let pendingNumberInput = null;
 
@@ -6316,13 +6337,8 @@
                     document.documentElement.clientWidth ||
                     window.innerWidth;
 
-                /*
-                * Memberikan jarak 6px di sisi kiri dan kanan.
-                */
-                const horizontalMargin = 12;
-
                 const availableWidth = Math.max(
-                    viewportWidth - horizontalMargin,
+                    viewportWidth - mobileScreenMargin,
                     1
                 );
 
@@ -6331,7 +6347,7 @@
                 * Hanya skalanya yang menyesuaikan layar.
                 */
                 const scale = mobileSheetQuery.matches
-                    ? Math.min(1, availableWidth / paperWidthPx)
+                    ? Math.min(1, (availableWidth / paperWidthPx) * mobileScreenScaleFactor)
                     : 1;
 
                 document.documentElement.style.setProperty(
@@ -6340,8 +6356,50 @@
                 );
             }
 
+            function setCheckEraseMode(isActive) {
+                checkEraseMode = isActive;
+                form.classList.toggle('check-erase-mode', checkEraseMode);
+                clearChecksButton.classList.toggle('active', checkEraseMode);
+                clearChecksButton.setAttribute('aria-pressed', String(checkEraseMode));
+
+                if (checkEraseMode) {
+                    draftState.textContent = 'Mode hapus ceklis aktif';
+                }
+            }
+
+            function getChecklistFieldFromTarget(target) {
+                if (!(target instanceof Element)) {
+                    return null;
+                }
+
+                const directField = target.closest('input[type="radio"], input[type="checkbox"]');
+
+                if (directField && form.contains(directField)) {
+                    return directField;
+                }
+
+                const label = target.closest('label');
+
+                if (!label || !form.contains(label)) {
+                    return null;
+                }
+
+                return label.querySelector('input[type="radio"], input[type="checkbox"]');
+            }
+
+            function beginPrintMode() {
+                document.documentElement.classList.toggle('mobile-print', mobileSheetQuery.matches);
+                document.documentElement.style.setProperty('--sheet-screen-scale', '1');
+            }
+
+            function endPrintMode() {
+                document.documentElement.classList.remove('mobile-print');
+                updateSheetScreenScale();
+            }
+
             function setMode(nextMode) {
                 commitPendingNumberInput();
+                setCheckEraseMode(false);
                 mode = nextMode;
                 document.querySelectorAll('[data-mark-mode]').forEach((button) => {
                     button.classList.toggle('active', button.dataset.markMode === mode);
@@ -6393,6 +6451,109 @@
                 return { fields, marks };
             }
 
+            function cloneDraft(draft) {
+                return {
+                    fields: { ...(draft.fields || {}) },
+                    marks: Array.isArray(draft.marks)
+                        ? draft.marks.map((mark) => ({ ...mark }))
+                        : [],
+                };
+            }
+
+            function createSnapshot() {
+                return cloneDraft(collectDraft());
+            }
+
+            function applyDraft(draft) {
+                const nextDraft = cloneDraft(draft);
+
+                form.querySelectorAll('input, textarea').forEach((field) => {
+                    if (!field.name) {
+                        return;
+                    }
+
+                    if (field.type === 'radio' || field.type === 'checkbox') {
+                        field.checked = false;
+                        return;
+                    }
+
+                    field.value = '';
+                });
+
+                Object.entries(nextDraft.fields).forEach(([name, value]) => {
+                    const escapedName = CSS.escape(name);
+                    const escapedValue = CSS.escape(value);
+                    const checked = form.querySelector(`input[name="${escapedName}"][value="${escapedValue}"]`);
+
+                    if (checked && (checked.type === 'radio' || checked.type === 'checkbox')) {
+                        checked.checked = true;
+                        return;
+                    }
+
+                    const field = form.querySelector(`input[name="${escapedName}"]:not([type="radio"]):not([type="checkbox"]), textarea[name="${escapedName}"]`);
+
+                    if (field) {
+                        field.value = value;
+                    }
+                });
+
+                marks = nextDraft.marks;
+                renderMarks();
+                autoGrowAll();
+            }
+
+            function setCurrentSnapshot(snapshot) {
+                currentSnapshot = cloneDraft(snapshot);
+                currentSnapshotKey = JSON.stringify(currentSnapshot);
+            }
+
+            function resetUndoHistory() {
+                undoStack = [];
+                setCurrentSnapshot(createSnapshot());
+            }
+
+            function recordHistoryChange() {
+                const nextSnapshot = createSnapshot();
+                const nextSnapshotKey = JSON.stringify(nextSnapshot);
+
+                if (!currentSnapshot) {
+                    setCurrentSnapshot(nextSnapshot);
+                    scheduleSave();
+                    return;
+                }
+
+                if (nextSnapshotKey !== currentSnapshotKey) {
+                    undoStack.push(cloneDraft(currentSnapshot));
+
+                    if (undoStack.length > 80) {
+                        undoStack.shift();
+                    }
+
+                    currentSnapshot = nextSnapshot;
+                    currentSnapshotKey = nextSnapshotKey;
+                }
+
+                scheduleSave();
+            }
+
+            function undoLastChange() {
+                commitPendingNumberInput();
+
+                const previousSnapshot = undoStack.pop();
+
+                if (!previousSnapshot) {
+                    draftState.textContent = 'Tidak ada perubahan untuk di-undo';
+                    return;
+                }
+
+                setCheckEraseMode(false);
+                applyDraft(previousSnapshot);
+                setCurrentSnapshot(previousSnapshot);
+                clearTimeout(saveTimer);
+                localStorage.setItem(storageKey, JSON.stringify(collectDraft()));
+                draftState.textContent = 'Perubahan terakhir dibatalkan';
+            }
+
             function restoreDraft() {
                 const raw = localStorage.getItem(storageKey);
                 if (!raw) {
@@ -6401,22 +6562,7 @@
 
                 try {
                     const draft = JSON.parse(raw);
-                    Object.entries(draft.fields || {}).forEach(([name, value]) => {
-                        const checked = form.querySelector(`input[name="${CSS.escape(name)}"][value="${CSS.escape(value)}"]`);
-                        if (checked && (checked.type === 'radio' || checked.type === 'checkbox')) {
-                            checked.checked = true;
-                            return;
-                        }
-
-                        const field = form.elements[name];
-                        if (field && field.type !== 'radio' && field.type !== 'checkbox') {
-                            field.value = value;
-                        }
-                    });
-
-                    marks = Array.isArray(draft.marks) ? draft.marks : [];
-                    renderMarks();
-                    autoGrowAll();
+                    applyDraft(draft);
                     draftState.textContent = 'Draft dipulihkan';
                 } catch (error) {
                     localStorage.removeItem(storageKey);
@@ -6500,7 +6646,7 @@
                     value,
                 });
                 renderMarks();
-                scheduleSave();
+                recordHistoryChange();
             }
 
             function startNumberInput(surface, point) {
@@ -6547,6 +6693,10 @@
 
             document.querySelectorAll('.mark-surface').forEach((surface) => {
                 surface.addEventListener('click', (event) => {
+                    if (checkEraseMode) {
+                        return;
+                    }
+
                     const targetMark = event.target.closest('.dent-mark, .number-mark');
 
                     if (targetMark && surface.contains(targetMark)) {
@@ -6554,7 +6704,7 @@
                             commitPendingNumberInput();
                             marks.splice(Number(targetMark.dataset.index), 1);
                             renderMarks();
-                            scheduleSave();
+                            recordHistoryChange();
                         }
                         return;
                     }
@@ -6577,29 +6727,24 @@
                         size: markSize,
                     });
                     renderMarks();
-                    scheduleSave();
+                    recordHistoryChange();
                 });
             });
 
             document.getElementById('undoMark').addEventListener('click', () => {
-                commitPendingNumberInput();
-                marks.pop();
-                renderMarks();
-                scheduleSave();
+                undoLastChange();
             });
 
             document.getElementById('clearMarks').addEventListener('click', () => {
                 removePendingNumberInput();
                 marks = [];
                 renderMarks();
-                scheduleSave();
+                recordHistoryChange();
             });
 
-            document.getElementById('clearChecks').addEventListener('click', () => {
-                form.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach((field) => {
-                    field.checked = false;
-                });
-                scheduleSave();
+            clearChecksButton.addEventListener('click', () => {
+                commitPendingNumberInput();
+                setCheckEraseMode(!checkEraseMode);
             });
 
             document.getElementById('resetForm').addEventListener('click', () => {
@@ -6612,7 +6757,9 @@
                 marks = [];
                 renderMarks();
                 autoGrowAll();
+                setCheckEraseMode(false);
                 localStorage.removeItem(storageKey);
+                resetUndoHistory();
                 draftState.textContent = 'Draft kosong';
             });
 
@@ -6620,9 +6767,34 @@
                 commitPendingNumberInput();
                 autoGrowAll();
                 localStorage.setItem(storageKey, JSON.stringify(collectDraft()));
+                beginPrintMode();
                 window.print();
-                window.setTimeout(updateSheetScreenScale, 300);
+                window.setTimeout(endPrintMode, 300);
             });
+
+            form.addEventListener('click', (event) => {
+                if (!checkEraseMode) {
+                    return;
+                }
+
+                const field = getChecklistFieldFromTarget(event.target);
+
+                if (!field) {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+
+                if (!field.checked) {
+                    draftState.textContent = 'Pilih ceklis yang sudah terisi';
+                    return;
+                }
+
+                field.checked = false;
+                draftState.textContent = 'Ceklis dihapus';
+                recordHistoryChange();
+            }, true);
 
             form.addEventListener('input', (event) => {
                 if (event.target.classList.contains('mark-number-input')) {
@@ -6632,10 +6804,10 @@
                 if (event.target.tagName === 'TEXTAREA') {
                     autoGrow(event.target);
                 }
-                scheduleSave();
+                recordHistoryChange();
             });
 
-            form.addEventListener('change', scheduleSave);
+            form.addEventListener('change', recordHistoryChange);
             window.addEventListener('resize', updateSheetScreenScale, { passive: true });
             window.addEventListener('orientationchange', () => {
                 window.setTimeout(updateSheetScreenScale, 120);
@@ -6650,15 +6822,16 @@
             window.addEventListener('beforeprint', () => {
                 commitPendingNumberInput();
                 autoGrowAll();
-                document.documentElement.style.setProperty('--sheet-screen-scale', '1');
+                beginPrintMode();
             });
             window.addEventListener('afterprint', () => {
-                updateSheetScreenScale();
+                endPrintMode();
             });
 
             updateSheetScreenScale();
             restoreDraft();
             autoGrowAll();
+            resetUndoHistory();
         })();
     </script>
 </body>

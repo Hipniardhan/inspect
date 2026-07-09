@@ -1097,31 +1097,78 @@
             * Toolbar dibuat responsif.
             */
             .toolbar {
-                position: static;
+                position: sticky;
+                top: 0;
+                z-index: 100;
+                display: block;
                 width: 100%;
-                flex-direction: column;
-                align-items: stretch;
-                gap: 8px;
-                padding: 10px;
+                padding: 7px 8px;
+                background: #fff;
+                border-bottom: 1px solid #cbd5e1;
+                overflow: hidden;
+                transition:
+                    transform 0.25s ease,
+                    opacity 0.25s ease;
+                will-change: transform;
             }
 
-            .toolbar-title {
-                text-align: center;
+            .toolbar.toolbar-hidden {
+                transform: translateY(-110%);
+                opacity: 0;
+                pointer-events: none;
+            }
+
+            .toolbar.toolbar-visible {
+                transform: translateY(0);
+                opacity: 1;
+                pointer-events: auto;
+            }
+
+            .toolbar > div:first-child {
+                display: none;
             }
 
             .toolbar-actions {
-                display: grid;
-                grid-template-columns: repeat(2, minmax(0, 1fr));
+                display: flex !important;
+                grid-template-columns: none !important;
+                flex-wrap: nowrap !important;
+                justify-content: flex-start;
+                align-items: center;
                 width: 100%;
-                gap: 7px;
+                gap: 6px;
+                padding: 0;
+                overflow-x: auto;
+                overflow-y: hidden;
+                scrollbar-width: none;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .toolbar-actions::-webkit-scrollbar {
+                display: none;
             }
 
             .tool-btn {
-                width: 100%;
-                min-width: 0;
-                padding: 7px 6px;
+                flex: 0 0 auto;
+                width: auto !important;
+                min-width: max-content;
+                min-height: 34px;
+                padding: 6px 10px;
+                border-radius: 4px;
                 font-size: 12px;
                 line-height: 1.2;
+                white-space: nowrap;
+            }
+
+            .tool-btn.primary {
+                background: #111827;
+                color: #fff;
+                border-color: #111827;
+            }
+
+            .tool-btn.active {
+                background: #f3f4f6;
+                border-color: #111827;
+                font-weight: 700;
             }
 
             /*
@@ -1134,6 +1181,7 @@
                 width: 100%;
                 gap: 12px;
                 padding: 10px 0 20px;
+                padding-top: 10px;
                 overflow: hidden;
             }
 
@@ -6404,6 +6452,7 @@
 
     <script>
         (() => {
+            const toolbar = document.querySelector('.toolbar');
             const form = document.getElementById('inspectionForm');
             const draftState = document.getElementById('draftState');
             const storageKey = 'inspeksi-v13-pdf-layout-draft';
@@ -6423,6 +6472,9 @@
             let currentSnapshotKey = '';
             let saveTimer = null;
             let pendingNumberInput = null;
+            let lastToolbarScrollY = window.scrollY;
+            let toolbarScrollTicking = false;
+            const toolbarScrollThreshold = 8;
 
             function updateSheetScreenScale() {
                 const viewportWidth =
@@ -6446,6 +6498,45 @@
                     '--sheet-screen-scale',
                     scale.toFixed(5)
                 );
+            }
+
+            function updateToolbarVisibility() {
+                if (!toolbar) {
+                    toolbarScrollTicking = false;
+                    return;
+                }
+
+                const currentScrollY = window.scrollY;
+
+                if (!mobileSheetQuery.matches) {
+                    toolbar.classList.remove('toolbar-hidden');
+                    toolbar.classList.add('toolbar-visible');
+                    lastToolbarScrollY = currentScrollY;
+                    toolbarScrollTicking = false;
+                    return;
+                }
+
+                if (currentScrollY <= 20) {
+                    toolbar.classList.remove('toolbar-hidden');
+                    toolbar.classList.add('toolbar-visible');
+                    lastToolbarScrollY = currentScrollY;
+                    toolbarScrollTicking = false;
+                    return;
+                }
+
+                const scrollDifference = currentScrollY - lastToolbarScrollY;
+
+                if (scrollDifference > toolbarScrollThreshold) {
+                    toolbar.classList.add('toolbar-hidden');
+                    toolbar.classList.remove('toolbar-visible');
+                    lastToolbarScrollY = currentScrollY;
+                } else if (scrollDifference < -toolbarScrollThreshold) {
+                    toolbar.classList.remove('toolbar-hidden');
+                    toolbar.classList.add('toolbar-visible');
+                    lastToolbarScrollY = currentScrollY;
+                }
+
+                toolbarScrollTicking = false;
             }
 
             function getChecklistFieldFromTarget(target) {
@@ -7284,6 +7375,14 @@
             });
 
             form.addEventListener('change', recordHistoryChange);
+            window.addEventListener('scroll', () => {
+                if (toolbarScrollTicking) {
+                    return;
+                }
+
+                window.requestAnimationFrame(updateToolbarVisibility);
+                toolbarScrollTicking = true;
+            }, { passive: true });
             window.addEventListener('resize', updateSheetScreenScale, { passive: true });
             window.addEventListener('orientationchange', () => {
                 window.setTimeout(updateSheetScreenScale, 120);
@@ -7291,8 +7390,10 @@
 
             if (mobileSheetQuery.addEventListener) {
                 mobileSheetQuery.addEventListener('change', updateSheetScreenScale);
+                mobileSheetQuery.addEventListener('change', updateToolbarVisibility);
             } else {
                 mobileSheetQuery.addListener(updateSheetScreenScale);
+                mobileSheetQuery.addListener(updateToolbarVisibility);
             }
 
             window.addEventListener('beforeprint', () => {
@@ -7304,7 +7405,9 @@
                 endPrintMode();
             });
 
+            toolbar?.classList.add('toolbar-visible');
             updateSheetScreenScale();
+            updateToolbarVisibility();
             restoreDraft();
             autoGrowAll();
             resetUndoHistory();

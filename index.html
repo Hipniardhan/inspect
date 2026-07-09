@@ -279,8 +279,100 @@
             user-select: none;
         }
 
+        .annotation-layer {
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+            pointer-events: none;
+        }
+
+        .annotation-arrow {
+            stroke: #c00000;
+            stroke-width: 1.8;
+            fill: none;
+            pointer-events: none;
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+        }
+
+        .annotation-arrow-head {
+            fill: #c00000;
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+        }
+
+        .annotation-circle {
+            fill: rgba(185, 28, 28, 0.06);
+            stroke: #c00000;
+            stroke-width: 2;
+            cursor: move;
+            touch-action: none;
+            pointer-events: auto;
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+        }
+
+        .annotation-box {
+            position: absolute;
+            left: var(--text-x);
+            top: var(--text-y);
+            z-index: 3;
+            display: grid;
+            grid-template-columns: minmax(24mm, 34mm) 5mm;
+            align-items: start;
+            transform: translate(-50%, -50%);
+            cursor: move;
+            touch-action: none;
+        }
+
+        .annotation-text {
+            width: 100%;
+            min-height: 7mm;
+            max-height: 28mm;
+            border: 1px solid rgba(255, 255, 255, 0.82);
+            border-radius: 2px;
+            padding: 1mm 1.4mm;
+            background: rgba(255, 255, 255, 0.86);
+            color: #000;
+            font-size: 8.5pt;
+            font-weight: 700;
+            line-height: 1.15;
+            resize: none;
+            overflow: hidden;
+            outline: 0;
+            box-shadow: 0 1px 3px rgba(255, 255, 255, 0.16);
+            cursor: text;
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+        }
+
+        .annotation-text[readonly] {
+            cursor: move;
+        }
+
+        .annotation-delete {
+            width: 5mm;
+            height: 5mm;
+            margin-left: 0.8mm;
+            border: 1px solid #c00000;
+            border-radius: 50%;
+            padding: 0;
+            background: rgba(255, 255, 255, 0.92);
+            color: #c00000;
+            font-size: 9pt;
+            font-weight: 700;
+            line-height: 1;
+            cursor: pointer;
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+        }
+
         .dent-mark {
             position: absolute;
+            z-index: 3;
             width: var(--size, 26px);
             height: var(--size, 26px);
             left: var(--x);
@@ -294,6 +386,7 @@
 
         .number-mark {
             position: absolute;
+            z-index: 3;
             left: var(--x);
             top: var(--y);
             min-width: 5.5mm;
@@ -1269,6 +1362,10 @@
 
             .dent-mark {
                 border-color: #c00000;
+            }
+
+            .annotation-delete {
+                display: none;
             }
 
             input::placeholder,
@@ -6318,7 +6415,8 @@
             const draftState = document.getElementById('draftState');
             const clearChecksButton = document.getElementById('clearChecks');
             const storageKey = 'inspeksi-v13-pdf-layout-draft';
-            const markSize = 28;
+            const annotationRadius = 4;
+            const annotationTextOffset = 16;
             const paperWidthPx = 210.08 * 96 / 25.4;
             const mobileSheetQuery = window.matchMedia('(max-width: 820px)');
             const mobileScreenMargin = 34;
@@ -6326,6 +6424,9 @@
             let mode = 'mark';
             let checkEraseMode = false;
             let marks = [];
+            let annotationIdCounter = 0;
+            let activeAnnotationDrag = null;
+            let suppressAnnotationClick = false;
             let undoStack = [];
             let currentSnapshot = null;
             let currentSnapshotKey = '';
@@ -6409,28 +6510,402 @@
                 });
             }
 
+            function createAnnotationId() {
+                annotationIdCounter += 1;
+                return `annotation-${Date.now().toString(36)}-${annotationIdCounter.toString(36)}`;
+            }
+
+            function clampPercent(value, min = 0, max = 100) {
+                const number = Number(value);
+
+                if (!Number.isFinite(number)) {
+                    return min;
+                }
+
+                return Math.min(max, Math.max(min, Number(number.toFixed(2))));
+            }
+
+            function getDefaultAnnotationTextPoint(circleX, circleY) {
+                const horizontalOffset = circleX > 72 ? -annotationTextOffset : annotationTextOffset;
+                const verticalOffset = circleY > 78 ? -10 : 10;
+
+                return {
+                    x: clampPercent(circleX + horizontalOffset, 8, 92),
+                    y: clampPercent(circleY + verticalOffset, 8, 92),
+                };
+            }
+
+            function normalizeMark(mark) {
+                if (!mark || !mark.view) {
+                    return null;
+                }
+
+                if ((mark.type || 'circle') === 'number') {
+                    return {
+                        type: 'number',
+                        view: mark.view,
+                        x: clampPercent(mark.x),
+                        y: clampPercent(mark.y),
+                        value: sanitizeNumber(mark.value),
+                    };
+                }
+
+                const circleX = clampPercent(mark.circleX ?? mark.x);
+                const circleY = clampPercent(mark.circleY ?? mark.y);
+                const textPoint = getDefaultAnnotationTextPoint(circleX, circleY);
+
+                return {
+                    type: 'annotation',
+                    id: mark.id || createAnnotationId(),
+                    view: mark.view,
+                    circleX,
+                    circleY,
+                    circleRadius: clampPercent(mark.circleRadius ?? annotationRadius, 1.6, 10),
+                    textX: clampPercent(mark.textX ?? textPoint.x, 6, 94),
+                    textY: clampPercent(mark.textY ?? textPoint.y, 6, 94),
+                    text: String(mark.text || ''),
+                };
+            }
+
+            function getAnnotationLinePoints(mark) {
+                const dx = mark.textX - mark.circleX;
+                const dy = mark.textY - mark.circleY;
+                const distance = Math.hypot(dx, dy) || 1;
+                const circleOffset = mark.circleRadius + 0.7;
+                const textOffset = 1.8;
+
+                return {
+                    x1: clampPercent(mark.circleX + (dx / distance) * circleOffset),
+                    y1: clampPercent(mark.circleY + (dy / distance) * circleOffset),
+                    x2: clampPercent(mark.textX - (dx / distance) * textOffset),
+                    y2: clampPercent(mark.textY - (dy / distance) * textOffset),
+                };
+            }
+
+            function setAnnotationLineAttributes(line, mark) {
+                const points = getAnnotationLinePoints(mark);
+                line.setAttribute('x1', `${points.x1}%`);
+                line.setAttribute('y1', `${points.y1}%`);
+                line.setAttribute('x2', `${points.x2}%`);
+                line.setAttribute('y2', `${points.y2}%`);
+            }
+
+            function autoGrowAnnotationText(textarea) {
+                textarea.style.height = 'auto';
+                textarea.style.height = `${Math.max(textarea.scrollHeight, 26)}px`;
+            }
+
+            function enterAnnotationEdit(textarea) {
+                if (!textarea) {
+                    return;
+                }
+
+                textarea.readOnly = false;
+                textarea.focus();
+                textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+                autoGrowAnnotationText(textarea);
+            }
+
+            function updateAnnotationElements(surface, index, mark) {
+                const circle = surface.querySelector(`.annotation-circle[data-index="${index}"]`);
+                const line = surface.querySelector(`.annotation-arrow[data-index="${index}"]`);
+                const box = surface.querySelector(`.annotation-box[data-index="${index}"]`);
+
+                if (circle) {
+                    circle.setAttribute('cx', `${mark.circleX}%`);
+                    circle.setAttribute('cy', `${mark.circleY}%`);
+                    circle.setAttribute('r', `${mark.circleRadius}%`);
+                }
+
+                if (line) {
+                    setAnnotationLineAttributes(line, mark);
+                }
+
+                if (box) {
+                    box.style.setProperty('--text-x', `${mark.textX}%`);
+                    box.style.setProperty('--text-y', `${mark.textY}%`);
+                }
+            }
+
+            function deleteAnnotation(index) {
+                if (!marks[index]) {
+                    return;
+                }
+
+                removePendingNumberInput();
+                marks.splice(index, 1);
+                renderMarks();
+                recordHistoryChange();
+            }
+
+            function beginAnnotationDrag(event, index, dragType) {
+                if (event.button !== undefined && event.button !== 0) {
+                    return;
+                }
+
+                const mark = marks[index];
+
+                if (!mark || mark.type !== 'annotation') {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+
+                activeAnnotationDrag = {
+                    index,
+                    dragType,
+                    surface: event.currentTarget.closest('.mark-surface'),
+                    pointerId: event.pointerId,
+                    captureTarget: event.currentTarget,
+                    startClientX: event.clientX,
+                    startClientY: event.clientY,
+                    moved: false,
+                };
+
+                if (event.currentTarget.setPointerCapture) {
+                    event.currentTarget.setPointerCapture(event.pointerId);
+                }
+
+                window.addEventListener('pointermove', moveAnnotationDrag);
+                window.addEventListener('pointerup', finishAnnotationDrag);
+                window.addEventListener('pointercancel', finishAnnotationDrag);
+            }
+
+            function moveAnnotationDrag(event) {
+                if (!activeAnnotationDrag || event.pointerId !== activeAnnotationDrag.pointerId) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                const mark = marks[activeAnnotationDrag.index];
+
+                if (!mark || mark.type !== 'annotation') {
+                    return;
+                }
+
+                if (
+                    !activeAnnotationDrag.moved &&
+                    Math.hypot(
+                        event.clientX - activeAnnotationDrag.startClientX,
+                        event.clientY - activeAnnotationDrag.startClientY
+                    ) < 4
+                ) {
+                    return;
+                }
+
+                const point = getSurfacePoint(event, activeAnnotationDrag.surface);
+                activeAnnotationDrag.moved = true;
+
+                if (activeAnnotationDrag.dragType === 'circle') {
+                    mark.circleX = clampPercent(point.x, 0, 100);
+                    mark.circleY = clampPercent(point.y, 0, 100);
+                } else {
+                    mark.textX = clampPercent(point.x, 6, 94);
+                    mark.textY = clampPercent(point.y, 6, 94);
+                }
+
+                updateAnnotationElements(activeAnnotationDrag.surface, activeAnnotationDrag.index, mark);
+            }
+
+            function finishAnnotationDrag(event) {
+                if (!activeAnnotationDrag || event.pointerId !== activeAnnotationDrag.pointerId) {
+                    return;
+                }
+
+                if (
+                    activeAnnotationDrag.captureTarget.releasePointerCapture &&
+                    (!activeAnnotationDrag.captureTarget.hasPointerCapture ||
+                        activeAnnotationDrag.captureTarget.hasPointerCapture(activeAnnotationDrag.pointerId))
+                ) {
+                    activeAnnotationDrag.captureTarget.releasePointerCapture(activeAnnotationDrag.pointerId);
+                }
+
+                window.removeEventListener('pointermove', moveAnnotationDrag);
+                window.removeEventListener('pointerup', finishAnnotationDrag);
+                window.removeEventListener('pointercancel', finishAnnotationDrag);
+
+                const finishedDrag = activeAnnotationDrag;
+                suppressAnnotationClick = finishedDrag.moved;
+
+                if (finishedDrag.moved) {
+                    recordHistoryChange();
+                } else if (event.type !== 'pointercancel') {
+                    enterAnnotationEdit(
+                        finishedDrag.surface.querySelector(`.annotation-text[data-index="${finishedDrag.index}"]`)
+                    );
+                }
+
+                activeAnnotationDrag = null;
+
+                if (suppressAnnotationClick) {
+                    window.setTimeout(() => {
+                        suppressAnnotationClick = false;
+                    }, 0);
+                }
+            }
+
             function renderMarks() {
-                document.querySelectorAll('.dent-mark, .number-mark').forEach((mark) => mark.remove());
+                document.querySelectorAll('.annotation-layer, .annotation-box, .number-mark').forEach((mark) => mark.remove());
+                marks = marks.map(normalizeMark).filter(Boolean);
 
-                marks.forEach((mark, index) => {
-                    const surface = document.querySelector(`.mark-surface[data-view="${mark.view}"]`);
-                    if (!surface) {
-                        return;
+                document.querySelectorAll('.mark-surface').forEach((surface) => {
+                    const surfaceMarks = marks
+                        .map((mark, index) => ({ mark, index }))
+                        .filter((entry) => entry.mark.view === surface.dataset.view);
+
+                    const annotationMarks = surfaceMarks.filter((entry) => entry.mark.type === 'annotation');
+
+                    if (annotationMarks.length) {
+                        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                        const markerId = `annotation-arrow-${surface.dataset.view}`;
+                        svg.classList.add('annotation-layer');
+
+                        const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+                        const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+                        marker.setAttribute('id', markerId);
+                        marker.setAttribute('viewBox', '0 0 10 10');
+                        marker.setAttribute('refX', '9');
+                        marker.setAttribute('refY', '5');
+                        marker.setAttribute('markerWidth', '6');
+                        marker.setAttribute('markerHeight', '6');
+                        marker.setAttribute('orient', 'auto-start-reverse');
+
+                        const arrowHead = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                        arrowHead.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
+                        arrowHead.classList.add('annotation-arrow-head');
+                        marker.appendChild(arrowHead);
+                        defs.appendChild(marker);
+                        svg.appendChild(defs);
+
+                        annotationMarks.forEach(({ mark, index }) => {
+                            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                            line.classList.add('annotation-arrow');
+                            line.dataset.index = String(index);
+                            line.setAttribute('marker-end', `url(#${markerId})`);
+                            setAnnotationLineAttributes(line, mark);
+                            svg.appendChild(line);
+
+                            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                            circle.classList.add('annotation-circle');
+                            circle.dataset.index = String(index);
+                            circle.setAttribute('cx', `${mark.circleX}%`);
+                            circle.setAttribute('cy', `${mark.circleY}%`);
+                            circle.setAttribute('r', `${mark.circleRadius}%`);
+                            circle.addEventListener('pointerdown', (event) => {
+                                if (mode === 'erase') {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    deleteAnnotation(index);
+                                    return;
+                                }
+
+                                beginAnnotationDrag(event, index, 'circle');
+                            });
+                            circle.addEventListener('click', (event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+
+                                if (suppressAnnotationClick) {
+                                    return;
+                                }
+
+                                enterAnnotationEdit(surface.querySelector(`.annotation-text[data-index="${index}"]`));
+                            });
+                            svg.appendChild(circle);
+                        });
+
+                        surface.appendChild(svg);
                     }
 
-                    const element = document.createElement('button');
-                    element.type = 'button';
-                    element.className = (mark.type || 'circle') === 'number' ? 'number-mark' : 'dent-mark';
-                    element.dataset.index = String(index);
-                    element.style.setProperty('--x', `${mark.x}%`);
-                    element.style.setProperty('--y', `${mark.y}%`);
-                    if ((mark.type || 'circle') === 'number') {
-                        element.textContent = sanitizeNumber(mark.value);
-                        element.title = `Angka ${element.textContent}`;
-                    } else {
-                        element.style.setProperty('--size', `${mark.size || markSize}px`);
-                    }
-                    surface.appendChild(element);
+                    annotationMarks.forEach(({ mark, index }) => {
+                        const box = document.createElement('div');
+                        box.className = 'annotation-box';
+                        box.dataset.index = String(index);
+                        box.style.setProperty('--text-x', `${mark.textX}%`);
+                        box.style.setProperty('--text-y', `${mark.textY}%`);
+
+                        const textarea = document.createElement('textarea');
+                        textarea.className = 'annotation-text';
+                        textarea.dataset.index = String(index);
+                        textarea.value = mark.text;
+                        textarea.placeholder = 'Keterangan';
+                        textarea.rows = 1;
+                        textarea.readOnly = true;
+                        textarea.spellcheck = false;
+                        textarea.addEventListener('input', () => {
+                            mark.text = textarea.value;
+                            autoGrowAnnotationText(textarea);
+                        });
+                        textarea.addEventListener('blur', () => {
+                            textarea.readOnly = true;
+                        });
+                        textarea.addEventListener('dblclick', (event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            enterAnnotationEdit(textarea);
+                        });
+
+                        const deleteButton = document.createElement('button');
+                        deleteButton.type = 'button';
+                        deleteButton.className = 'annotation-delete';
+                        deleteButton.textContent = 'x';
+                        deleteButton.setAttribute('aria-label', 'Hapus anotasi');
+                        deleteButton.addEventListener('click', (event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            deleteAnnotation(index);
+                        });
+
+                        box.addEventListener('pointerdown', (event) => {
+                            if (event.target === deleteButton || !textarea.readOnly) {
+                                return;
+                            }
+
+                            if (mode === 'erase') {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                deleteAnnotation(index);
+                                return;
+                            }
+
+                            beginAnnotationDrag(event, index, 'text');
+                        });
+                        box.addEventListener('click', (event) => {
+                            if (!textarea.readOnly) {
+                                return;
+                            }
+
+                            event.preventDefault();
+                            event.stopPropagation();
+
+                            if (event.target === deleteButton || suppressAnnotationClick) {
+                                return;
+                            }
+
+                            enterAnnotationEdit(textarea);
+                        });
+
+                        box.appendChild(textarea);
+                        box.appendChild(deleteButton);
+                        surface.appendChild(box);
+                        autoGrowAnnotationText(textarea);
+                    });
+
+                    surfaceMarks
+                        .filter((entry) => entry.mark.type === 'number')
+                        .forEach(({ mark, index }) => {
+                            const element = document.createElement('button');
+                            element.type = 'button';
+                            element.className = 'number-mark';
+                            element.dataset.index = String(index);
+                            element.style.setProperty('--x', `${mark.x}%`);
+                            element.style.setProperty('--y', `${mark.y}%`);
+                            element.textContent = sanitizeNumber(mark.value);
+                            element.title = `Angka ${element.textContent}`;
+                            surface.appendChild(element);
+                        });
                 });
             }
 
@@ -6687,6 +7162,26 @@
                 input.focus();
             }
 
+            function createAnnotation(surface, point) {
+                const textPoint = getDefaultAnnotationTextPoint(point.x, point.y);
+                const annotation = {
+                    type: 'annotation',
+                    id: createAnnotationId(),
+                    view: surface.dataset.view,
+                    circleX: clampPercent(point.x),
+                    circleY: clampPercent(point.y),
+                    circleRadius: annotationRadius,
+                    textX: textPoint.x,
+                    textY: textPoint.y,
+                    text: '',
+                };
+
+                marks.push(annotation);
+                renderMarks();
+                recordHistoryChange();
+                enterAnnotationEdit(surface.querySelector(`.annotation-text[data-index="${marks.length - 1}"]`));
+            }
+
             document.querySelectorAll('[data-mark-mode]').forEach((button) => {
                 button.addEventListener('click', () => setMode(button.dataset.markMode));
             });
@@ -6697,7 +7192,17 @@
                         return;
                     }
 
-                    const targetMark = event.target.closest('.dent-mark, .number-mark');
+                    const targetElement = event.target instanceof Element ? event.target : null;
+
+                    if (!targetElement) {
+                        return;
+                    }
+
+                    if (targetElement.closest('.annotation-circle, .annotation-box')) {
+                        return;
+                    }
+
+                    const targetMark = targetElement.closest('.number-mark');
 
                     if (targetMark && surface.contains(targetMark)) {
                         if (mode === 'erase') {
@@ -6719,15 +7224,7 @@
                     }
 
                     const point = getSurfacePoint(event, surface);
-                    marks.push({
-                        type: 'circle',
-                        view: surface.dataset.view,
-                        x: point.x,
-                        y: point.y,
-                        size: markSize,
-                    });
-                    renderMarks();
-                    recordHistoryChange();
+                    createAnnotation(surface, point);
                 });
             });
 

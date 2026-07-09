@@ -1,0 +1,30 @@
+{
+    "id": "./",
+    "name": "RTECH Inspeksi Kendaraan",
+    "short_name": "RTECH Inspeksi",
+    "description": "Aplikasi form inspeksi kendaraan RTECH",
+    "start_url": "./",
+    "scope": "./",
+    "display": "standalone",
+    "display_override": [
+        "standalone",
+        "minimal-ui"
+    ],
+    "orientation": "portrait",
+    "background_color": "#ffffff",
+    "theme_color": "#111827",
+    "icons": [
+        {
+            "src": "./assets/icons/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "./assets/icons/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}

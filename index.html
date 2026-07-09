@@ -3,6 +3,13 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="manifest" href="./manifest.webmanifest">
+    <meta name="theme-color" content="#111827">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="RTECH Inspeksi">
+    <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
     <title>Report Pelaporan Inspeksi Kendaraan</title>
     <style>
         :root {
@@ -1097,7 +1104,7 @@
             * Toolbar dibuat responsif.
             */
             .toolbar {
-                position: sticky;
+                position: fixed;
                 top: 0;
                 z-index: 100;
                 display: block;
@@ -6475,6 +6482,24 @@
             let lastToolbarScrollY = window.scrollY;
             let toolbarScrollTicking = false;
             const toolbarScrollThreshold = 8;
+
+            const isStandalone =
+                window.matchMedia('(display-mode: standalone)').matches ||
+                window.navigator.standalone === true;
+
+            document.documentElement.classList.toggle('is-standalone', isStandalone);
+
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', async () => {
+                    try {
+                        const registration = await navigator.serviceWorker.register('./service-worker.js');
+
+                        console.log('Service worker registered:', registration.scope);
+                    } catch (error) {
+                        console.error('Service worker registration failed:', error);
+                    }
+                });
+            }
 
             function updateSheetScreenScale() {
                 const viewportWidth =

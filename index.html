@@ -984,98 +984,215 @@
         }
 
         @media screen and (max-width: 820px) {
-        body {
-            overflow-x: auto;
+            html {
+                width: 100%;
+                overflow-x: hidden;
+                -webkit-text-size-adjust: 100%;
+                text-size-adjust: 100%;
+            }
+
+            body {
+                width: 100%;
+                min-width: 0;
+                overflow-x: hidden;
+                background: var(--screen);
+            }
+
+            /*
+            * Toolbar dibuat responsif.
+            */
+            .toolbar {
+                position: static;
+                width: 100%;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
+                padding: 10px;
+            }
+
+            .toolbar-title {
+                text-align: center;
+            }
+
+            .toolbar-actions {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                width: 100%;
+                gap: 7px;
+            }
+
+            .tool-btn {
+                width: 100%;
+                min-width: 0;
+                padding: 7px 6px;
+                font-size: 12px;
+                line-height: 1.2;
+            }
+
+            /*
+            * Tempat seluruh lembar A4.
+            */
+            #inspectionForm {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                width: 100%;
+                gap: 12px;
+                padding: 10px 0 20px;
+                overflow: hidden;
+            }
+
+            /*
+            * Ukuran halaman tetap A4.
+            * Halaman hanya diperkecil agar masuk layar HP.
+            */
+            .sheet {
+                position: relative;
+
+                flex: 0 0 auto;
+
+                width: var(--paper-width);
+                min-width: var(--paper-width);
+                max-width: var(--paper-width);
+
+                height: var(--paper-height);
+                min-height: var(--paper-height);
+                max-height: var(--paper-height);
+
+                margin: 0 auto;
+                padding: 14mm 15mm 25mm;
+
+                background: #fff;
+                overflow: hidden;
+
+                zoom: var(--sheet-screen-scale, 1);
+                transform: none;
+                transform-origin: top center;
+
+                box-shadow: 0 5px 18px rgba(15, 23, 42, 0.22);
+            }
+
+            /*
+            * Halaman form dibuat flex agar footer dapat
+            * didorong ke bawah tanpa menabrak tabel.
+            */
+            .check-sheet {
+                display: flex;
+                flex-direction: column;
+            }
+
+            /*
+            * Footer halaman form:
+            * tidak lagi absolute di mobile.
+            */
+            .check-sheet .footer {
+                position: static;
+
+                left: auto;
+                right: auto;
+                bottom: auto;
+
+                width: 100%;
+                min-height: 16mm;
+
+                margin-top: auto;
+
+                flex: 0 0 auto;
+            }
+
+            /*
+            * Footer pada halaman non-form tetap berada
+            * di bagian bawah halaman.
+            */
+            .sheet:not(.check-sheet) .footer {
+                position: absolute;
+                left: 15mm;
+                right: 15mm;
+                bottom: 5.8mm;
+            }
+
+            /*
+            * Pertahankan susunan footer seperti PDF.
+            */
+            .footer {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) 8mm;
+                column-gap: 3mm;
+                align-items: center;
+
+                font-size: 7pt;
+                line-height: 1.22;
+                z-index: 5;
+            }
+
+            .footer-contact,
+            .footer-web,
+            .footer-group {
+                white-space: nowrap;
+            }
+
+            .footer-contact {
+                margin-bottom: 1mm;
+            }
+
+            .footer-channels {
+                display: grid;
+                grid-template-columns: 34mm 31mm 32mm 32mm 32mm;
+                align-items: center;
+                column-gap: 1.5mm;
+                margin-bottom: 0.6mm;
+            }
+
+            .footer-channel-label {
+                white-space: nowrap;
+            }
+
+            .footer-channel {
+                display: inline-flex;
+                align-items: center;
+                min-width: 0;
+                gap: 1.1mm;
+                white-space: nowrap;
+            }
+
+            .footer-icon {
+                width: 5.3mm;
+                height: 5.3mm;
+                flex: 0 0 auto;
+                object-fit: contain;
+            }
+
+            .page-number {
+                text-align: right;
+                font-size: 9pt;
+            }
+
+            /*
+            * Struktur tabel tidak diubah.
+            * Semua kolom tetap sama seperti PDF.
+            */
+            .check-table,
+            .wheel-table,
+            .electrical-special-table,
+            .document-table,
+            .estimate-table {
+                width: 100%;
+                table-layout: fixed;
+                flex-shrink: 0;
+            }
+
+            /*
+            * Mencegah browser HP mengubah ukuran input.
+            */
+            input,
+            textarea,
+            select,
+            button {
+                font-size: inherit;
+                -webkit-text-size-adjust: 100%;
+                text-size-adjust: 100%;
+            }
         }
-
-        .toolbar {
-            position: static;
-            align-items: stretch;
-            flex-direction: column;
-            padding: 10px;
-        }
-
-        .toolbar-actions {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            width: 100%;
-        }
-
-        .tool-btn {
-            min-width: 0;
-            padding: 7px 8px;
-            line-height: 1.15;
-        }
-
-        #inspectionForm {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 12px;
-            padding: 10px 0 18px;
-        }
-
-        .sheet {
-            width: var(--paper-width);
-            min-height: var(--paper-height);
-            margin: 0 auto;
-
-            /* Ditambah dari 25mm agar footer punya ruang */
-            padding: 14mm 15mm 34mm;
-
-            transform-origin: top center;
-            zoom: var(--sheet-screen-scale, 1);
-        }
-
-        /* Footer mobile */
-        .footer {
-            left: 12mm;
-            right: 12mm;
-            bottom: 5mm;
-
-            grid-template-columns: minmax(0, 1fr) 7mm;
-            column-gap: 2mm;
-            align-items: end;
-
-            font-size: 7.2pt;
-            line-height: 1.25;
-        }
-
-        /* Izinkan teks turun ke baris berikutnya */
-        .footer-contact,
-        .footer-web,
-        .footer-group {
-            white-space: normal;
-        }
-
-        /* Kontak dibuat dua kolom */
-        .footer-channels {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            column-gap: 4mm;
-            row-gap: 1.2mm;
-            margin-bottom: 1mm;
-        }
-
-        /* Judul kontak memenuhi dua kolom */
-        .footer-channel-label {
-            grid-column: 1 / -1;
-        }
-
-        .footer-channel {
-            min-width: 0;
-        }
-
-        /* Username panjang tidak keluar dari footer */
-        .footer-channel span {
-            min-width: 0;
-            overflow-wrap: anywhere;
-        }
-
-        .page-number {
-            align-self: end;
-            padding-bottom: 0.5mm;
-        }
-    }
 
         @page {
             size: 210.08mm 297.04mm;
@@ -6195,9 +6312,32 @@
             let pendingNumberInput = null;
 
             function updateSheetScreenScale() {
-                const availableWidth = Math.max(window.innerWidth - 18, 280);
-                const scale = mobileSheetQuery.matches ? Math.min(1, availableWidth / paperWidthPx) : 1;
-                document.documentElement.style.setProperty('--sheet-screen-scale', scale.toFixed(4));
+                const viewportWidth =
+                    document.documentElement.clientWidth ||
+                    window.innerWidth;
+
+                /*
+                * Memberikan jarak 6px di sisi kiri dan kanan.
+                */
+                const horizontalMargin = 12;
+
+                const availableWidth = Math.max(
+                    viewportWidth - horizontalMargin,
+                    1
+                );
+
+                /*
+                * Lebar kertas tetap A4.
+                * Hanya skalanya yang menyesuaikan layar.
+                */
+                const scale = mobileSheetQuery.matches
+                    ? Math.min(1, availableWidth / paperWidthPx)
+                    : 1;
+
+                document.documentElement.style.setProperty(
+                    '--sheet-screen-scale',
+                    scale.toFixed(5)
+                );
             }
 
             function setMode(nextMode) {

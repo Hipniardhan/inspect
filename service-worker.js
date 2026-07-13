@@ -1,8 +1,10 @@
-const CACHE_NAME = 'rtech-inspection-v1';
+const CACHE_NAME = 'rtech-inspection-v3';
 
 const APP_ASSETS = [
     './',
     './index.html',
+    './css/app.css',
+    './js/app.js',
     './manifest.webmanifest',
     './assets/icons/icon-192.png',
     './assets/icons/icon-512.png',

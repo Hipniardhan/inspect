@@ -80,6 +80,12 @@ button {
     font-weight: 700;
 }
 
+.file-slot-select {
+    appearance: auto;
+    cursor: pointer;
+    background: #fff;
+}
+
 .sheet {
     position: relative;
     width: var(--paper-width);
@@ -1323,6 +1329,17 @@ button {
     .page-number {
         text-align: right;
         font-size: 9pt;
+    }
+
+    .file-slot-select {
+        flex: 0 0 auto;
+        width: auto !important;
+        min-width: max-content;
+        min-height: 34px;
+        padding: 6px 10px;
+        font-size: 12px;
+        line-height: 1.2;
+        white-space: nowrap;
     }
 
     /*

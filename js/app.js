@@ -4,8 +4,10 @@
     const toolbarElement =
         toolbarViewportAnchor?.querySelector('.toolbar');
     const form = document.getElementById('inspectionForm');
+    const fileSlotSelect = document.getElementById('fileSlotSelect');
     const draftState = document.getElementById('draftState');
-    const storageKey = 'inspeksi-v13-pdf-layout-draft';
+    const ACTIVE_FILE_SLOT_KEY = 'rtech-inspection-active-file-slot';
+    const fileSlots = ['1', '2', '3'];
     const annotationRadius = 4;
     const annotationTextOffset = 16;
     const paperWidthPx = 210.08 * 96 / 25.4;
@@ -25,6 +27,7 @@
     let saveTimer = null;
     let pendingNumberInput = null;
     let toolbarViewportFrame = null;
+    const checklistClickState = new WeakMap();
     const isStandalone =
         window.matchMedia('(display-mode: standalone)').matches ||
         window.navigator.standalone === true;
@@ -632,6 +635,24 @@
         return cloneDraft(collectDraft());
     }
 
+    function getActiveFileSlot() {
+        const slot = localStorage.getItem(ACTIVE_FILE_SLOT_KEY);
+
+        return fileSlots.includes(slot) ? slot : '1';
+    }
+
+    function setActiveFileSlot(slot) {
+        const nextSlot = fileSlots.includes(slot) ? slot : '1';
+
+        localStorage.setItem(ACTIVE_FILE_SLOT_KEY, nextSlot);
+    }
+
+    function getDraftStorageKey(slot = getActiveFileSlot()) {
+        const targetSlot = fileSlots.includes(slot) ? slot : '1';
+
+        return `rtech-inspection-draft-file-${targetSlot}`;
+    }
+
     function applyDraft(draft) {
         const nextDraft = cloneDraft(draft);
 
@@ -668,6 +689,11 @@
         marks = nextDraft.marks;
         renderMarks();
         autoGrowAll();
+    }
+
+    function clearCurrentFormViewWithoutDeletingStorage() {
+        removePendingNumberInput();
+        applyDraft({ fields: {}, marks: [] });
     }
 
     function setCurrentSnapshot(snapshot) {
@@ -716,31 +742,50 @@
 
         applyDraft(previousSnapshot);
         setCurrentSnapshot(previousSnapshot);
-        clearTimeout(saveTimer);
-        localStorage.setItem(storageKey, JSON.stringify(collectDraft()));
+        saveDraft();
         draftState.textContent = 'Perubahan terakhir dibatalkan';
     }
 
-    function restoreDraft() {
-        const raw = localStorage.getItem(storageKey);
+    function saveDraft(slot = getActiveFileSlot()) {
+        clearTimeout(saveTimer);
+        saveTimer = null;
+        localStorage.setItem(getDraftStorageKey(slot), JSON.stringify(collectDraft()));
+        draftState.textContent = `Draft File ${slot} tersimpan`;
+    }
+
+    function loadDraft(slot = getActiveFileSlot()) {
+        const raw = localStorage.getItem(getDraftStorageKey(slot));
+
+        clearCurrentFormViewWithoutDeletingStorage();
+
         if (!raw) {
+            draftState.textContent = `File ${slot} kosong`;
+            resetUndoHistory();
             return;
         }
 
         try {
             const draft = JSON.parse(raw);
             applyDraft(draft);
-            draftState.textContent = 'Draft dipulihkan';
+            draftState.textContent = `Draft File ${slot} dipulihkan`;
         } catch (error) {
-            localStorage.removeItem(storageKey);
+            localStorage.removeItem(getDraftStorageKey(slot));
+            draftState.textContent = `File ${slot} kosong`;
+            resetUndoHistory();
+            return;
         }
+
+        resetUndoHistory();
     }
 
     function scheduleSave() {
         clearTimeout(saveTimer);
+        const targetSlot = getActiveFileSlot();
+        const targetStorageKey = getDraftStorageKey(targetSlot);
+
         saveTimer = setTimeout(() => {
-            localStorage.setItem(storageKey, JSON.stringify(collectDraft()));
-            draftState.textContent = 'Draft tersimpan';
+            localStorage.setItem(targetStorageKey, JSON.stringify(collectDraft()));
+            draftState.textContent = `Draft File ${targetSlot} tersimpan`;
         }, 200);
     }
 
@@ -878,6 +923,21 @@
         button.addEventListener('click', () => setMode(button.dataset.markMode));
     });
 
+    fileSlotSelect?.addEventListener('change', () => {
+        const nextSlot = fileSlotSelect.value;
+        const currentSlot = getActiveFileSlot();
+
+        if (nextSlot === currentSlot) {
+            return;
+        }
+
+        saveDraft(currentSlot);
+        setActiveFileSlot(nextSlot);
+        loadDraft(nextSlot);
+
+        draftState.textContent = `File ${nextSlot} aktif`;
+    });
+
     document.querySelectorAll('.mark-surface').forEach((surface) => {
         surface.addEventListener('click', (event) => {
             const targetElement = event.target instanceof Element ? event.target : null;
@@ -916,7 +976,7 @@
         });
     });
 
-    document.getElementById('undoMark').addEventListener('click', () => {
+    document.getElementById('undoMark')?.addEventListener('click', () => {
         undoLastChange();
     });
 
@@ -928,29 +988,69 @@
     });
 
     document.getElementById('resetForm').addEventListener('click', () => {
-        if (!window.confirm('Reset semua isi form?')) {
+        if (!window.confirm('Reset semua isi form dan semua file?')) {
             return;
         }
 
-        form.reset();
-        removePendingNumberInput();
-        marks = [];
-        renderMarks();
-        autoGrowAll();
+        clearTimeout(saveTimer);
+        saveTimer = null;
+
+        fileSlots.forEach((slot) => {
+            localStorage.removeItem(getDraftStorageKey(slot));
+        });
+        localStorage.removeItem(ACTIVE_FILE_SLOT_KEY);
+        setActiveFileSlot('1');
+
+        if (fileSlotSelect) {
+            fileSlotSelect.value = '1';
+        }
+
+        clearCurrentFormViewWithoutDeletingStorage();
         setMode('mark');
-        localStorage.removeItem(storageKey);
         resetUndoHistory();
-        draftState.textContent = 'Draft kosong';
+        draftState.textContent = 'Semua file kosong';
     });
 
     document.getElementById('printPage').addEventListener('click', () => {
         commitPendingNumberInput();
         autoGrowAll();
-        localStorage.setItem(storageKey, JSON.stringify(collectDraft()));
+        saveDraft();
         beginPrintMode();
         window.print();
         window.setTimeout(endPrintMode, 300);
     });
+
+    form.addEventListener('pointerdown', (event) => {
+        const field = getChecklistFieldFromTarget(event.target);
+
+        if (!field) {
+            return;
+        }
+
+        checklistClickState.set(field, field.checked);
+    }, true);
+
+    form.addEventListener('click', (event) => {
+        const field = getChecklistFieldFromTarget(event.target);
+
+        if (!field) {
+            return;
+        }
+
+        const wasChecked = checklistClickState.get(field) === true;
+
+        if (!wasChecked) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        field.checked = false;
+        field.dispatchEvent(new Event('change', { bubbles: true }));
+        draftState.textContent = 'Pilihan dikosongkan';
+        recordHistoryChange();
+    }, true);
 
     form.addEventListener('click', (event) => {
         if (mode !== 'erase') {
@@ -1058,7 +1158,12 @@
 
     updateSheetScreenScale();
     requestToolbarViewportSync();
-    restoreDraft();
+    const activeSlot = getActiveFileSlot();
+
+    if (fileSlotSelect) {
+        fileSlotSelect.value = activeSlot;
+    }
+
+    loadDraft(activeSlot);
     autoGrowAll();
-    resetUndoHistory();
 })();

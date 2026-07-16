@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rtech-inspection-v3';
+const CACHE_NAME = 'rtech-inspection-v7';
 
 const APP_ASSETS = [
     './',

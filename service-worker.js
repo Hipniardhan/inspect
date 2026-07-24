@@ -1,4 +1,6 @@
-const CACHE_NAME = 'rtech-inspection-v7';
+const CACHE_NAME = 'rtech-inspection-v18';
+const IS_LOCALHOST =
+    ['localhost', '127.0.0.1', '::1'].includes(self.location.hostname);
 
 const APP_ASSETS = [
     './',
@@ -25,6 +27,11 @@ const APP_ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
+    if (IS_LOCALHOST) {
+        self.skipWaiting();
+        return;
+    }
+
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then((cache) => cache.addAll(APP_ASSETS))
@@ -49,6 +56,11 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
     if (event.request.method !== 'GET') {
+        return;
+    }
+
+    if (IS_LOCALHOST) {
+        event.respondWith(fetch(event.request));
         return;
     }
 

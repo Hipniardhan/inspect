@@ -31,10 +31,26 @@
     const isStandalone =
         window.matchMedia('(display-mode: standalone)').matches ||
         window.navigator.standalone === true;
+    const isLocalhost =
+        ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
 
     document.documentElement.classList.toggle('is-standalone', isStandalone);
 
-    if ('serviceWorker' in navigator) {
+    if ('serviceWorker' in navigator && isLocalhost) {
+        window.addEventListener('load', async () => {
+            try {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+
+                await Promise.all(
+                    registrations
+                        .filter((registration) => registration.scope.startsWith(window.location.origin))
+                        .map((registration) => registration.unregister())
+                );
+            } catch (error) {
+                console.error('Service worker unregister failed:', error);
+            }
+        });
+    } else if ('serviceWorker' in navigator) {
         window.addEventListener('load', async () => {
             try {
                 const registration = await navigator.serviceWorker.register('./service-worker.js');
@@ -160,6 +176,14 @@
             return null;
         }
 
+        if (
+            target.closest(
+                'textarea, input[type="text"], input[type="number"], select, button, a'
+            )
+        ) {
+            return null;
+        }
+
         const directField = target.closest('input[type="radio"], input[type="checkbox"]');
 
         if (directField && form.contains(directField)) {
@@ -168,11 +192,21 @@
 
         const label = target.closest('label');
 
-        if (!label || !form.contains(label)) {
+        if (label && form.contains(label)) {
+            const labelField = label.querySelector('input[type="radio"], input[type="checkbox"]');
+
+            if (labelField) {
+                return labelField;
+            }
+        }
+
+        const cell = target.closest('td, th');
+
+        if (!cell || !form.contains(cell)) {
             return null;
         }
 
-        return label.querySelector('input[type="radio"], input[type="checkbox"]');
+        return cell.querySelector('input[type="radio"], input[type="checkbox"]');
     }
 
     function beginPrintMode() {
@@ -635,6 +669,178 @@
         return cloneDraft(collectDraft());
     }
 
+    function getOnlyDigits(value) {
+        return String(value || '').replace(/\D/g, '');
+    }
+
+    function formatRupiahDigits(value) {
+        const digits = getOnlyDigits(value);
+
+        if (!digits) {
+            return '';
+        }
+
+        return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+
+    function formatNumberGroupToRupiah(numberText) {
+        return formatRupiahDigits(numberText);
+    }
+
+    function formatRupiahFreeText(value) {
+        const text = String(value || '');
+        const cleaned = text
+            .replace(/rp\.?/gi, '')
+            .replace(/[^\d.,\-\s]/g, '');
+
+        if (!cleaned.trim()) {
+            return '';
+        }
+
+        const parts = cleaned.split('-');
+        const formattedParts = parts.map((part) => formatNumberGroupToRupiah(part));
+        const visibleParts = formattedParts.filter(Boolean);
+
+        if (visibleParts.length === 0) {
+            return '';
+        }
+
+        if (parts.length > 1 && formattedParts[0]) {
+            const secondPart = formattedParts.slice(1).find(Boolean);
+
+            return secondPart
+                ? `${formattedParts[0]} - ${secondPart}`
+                : `${formattedParts[0]} - `;
+        }
+
+        return visibleParts[0];
+    }
+
+    function applyEstimateRupiahFormat(input) {
+        if (!input) {
+            return;
+        }
+
+        input.value = formatRupiahFreeText(input.value);
+    }
+
+    function applyRupiahFormat(input) {
+        if (!input) {
+            return;
+        }
+
+        if (
+            input.classList.contains('estimate-cost-input') &&
+            !input.classList.contains('grand-total-input')
+        ) {
+            applyEstimateRupiahFormat(input);
+            return;
+        }
+
+        input.value = formatRupiahDigits(input.value);
+    }
+
+    function formatAllRupiahInputs() {
+        form.querySelectorAll('.rupiah-input').forEach(applyRupiahFormat);
+    }
+
+    function initRupiahInputs() {
+        form.querySelectorAll('.rupiah-input').forEach((input) => {
+            input.setAttribute('type', 'text');
+            input.setAttribute('inputmode', 'numeric');
+            input.setAttribute('autocomplete', 'off');
+
+            applyRupiahFormat(input);
+
+            if (input.dataset.rupiahReady === '1') {
+                return;
+            }
+
+            input.dataset.rupiahReady = '1';
+
+            input.addEventListener('input', () => {
+                applyRupiahFormat(input);
+
+                if (!input.classList.contains('estimate-cost-input')) {
+                    scheduleSave();
+                }
+            });
+
+            input.addEventListener('blur', () => {
+                applyRupiahFormat(input);
+
+                if (!input.classList.contains('estimate-cost-input')) {
+                    scheduleSave();
+                }
+            });
+        });
+    }
+
+    function parseEstimateAmount(value) {
+        const text = String(value || '');
+        const firstNumberMatch = text.match(/\d[\d.]*/);
+
+        if (!firstNumberMatch) {
+            return 0;
+        }
+
+        const normalized = firstNumberMatch[0].replace(/\D/g, '');
+
+        return Number(normalized || 0);
+    }
+
+    function formatRupiahNumber(value) {
+        const number = Number(value || 0);
+
+        if (!number) {
+            return '';
+        }
+
+        return String(number).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+
+    function updateEstimateGrandTotal(shouldSave = true) {
+        const estimateInputs = form.querySelectorAll(
+            '.estimate-table .estimate-cost-input'
+        );
+
+        let total = 0;
+
+        estimateInputs.forEach((input) => {
+            total += parseEstimateAmount(input.value);
+        });
+
+        const grandTotalInput = form.querySelector('.grand-total-input');
+
+        if (grandTotalInput) {
+            grandTotalInput.value = formatRupiahNumber(total);
+        }
+
+        if (shouldSave) {
+            scheduleSave();
+        }
+    }
+
+    function initEstimateAutoTotal() {
+        form.querySelectorAll('.estimate-table .estimate-cost-input').forEach((input) => {
+            if (input.dataset.estimateTotalReady === '1') {
+                return;
+            }
+
+            input.dataset.estimateTotalReady = '1';
+            input.addEventListener('input', () => updateEstimateGrandTotal());
+            input.addEventListener('blur', () => updateEstimateGrandTotal());
+        });
+
+        const grandTotalInput = form.querySelector('.grand-total-input');
+
+        if (grandTotalInput) {
+            grandTotalInput.readOnly = true;
+        }
+
+        updateEstimateGrandTotal(false);
+    }
+
     function getActiveFileSlot() {
         const slot = localStorage.getItem(ACTIVE_FILE_SLOT_KEY);
 
@@ -689,6 +895,8 @@
         marks = nextDraft.marks;
         renderMarks();
         autoGrowAll();
+        formatAllRupiahInputs();
+        updateEstimateGrandTotal(false);
     }
 
     function clearCurrentFormViewWithoutDeletingStorage() {
@@ -747,6 +955,8 @@
     }
 
     function saveDraft(slot = getActiveFileSlot()) {
+        updateEstimateGrandTotal(false);
+        formatAllRupiahInputs();
         clearTimeout(saveTimer);
         saveTimer = null;
         localStorage.setItem(getDraftStorageKey(slot), JSON.stringify(collectDraft()));
@@ -784,6 +994,8 @@
         const targetStorageKey = getDraftStorageKey(targetSlot);
 
         saveTimer = setTimeout(() => {
+            updateEstimateGrandTotal(false);
+            formatAllRupiahInputs();
             localStorage.setItem(targetStorageKey, JSON.stringify(collectDraft()));
             draftState.textContent = `Draft File ${targetSlot} tersimpan`;
         }, 200);
@@ -938,6 +1150,34 @@
         draftState.textContent = `File ${nextSlot} aktif`;
     });
 
+    document.addEventListener('click', (event) => {
+        const target = event.target instanceof Element ? event.target : null;
+        const trigger = target?.closest('.bulk-good-trigger');
+
+        if (!trigger) {
+            return;
+        }
+
+        const table = trigger.closest('table');
+
+        if (!table) {
+            return;
+        }
+
+        const bulkValue = trigger.dataset.bulkValue || 'Baik';
+
+        table
+            .querySelectorAll(`tbody input[type="radio"][value="${CSS.escape(bulkValue)}"]`)
+            .forEach((input) => {
+                if (input.checked) {
+                    return;
+                }
+
+                input.checked = true;
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+    });
+
     document.querySelectorAll('.mark-surface').forEach((surface) => {
         surface.addEventListener('click', (event) => {
             const targetElement = event.target instanceof Element ? event.target : null;
@@ -978,13 +1218,6 @@
 
     document.getElementById('undoMark')?.addEventListener('click', () => {
         undoLastChange();
-    });
-
-    document.getElementById('clearMarks').addEventListener('click', () => {
-        removePendingNumberInput();
-        marks = [];
-        renderMarks();
-        recordHistoryChange();
     });
 
     document.getElementById('resetForm').addEventListener('click', () => {
@@ -1037,42 +1270,50 @@
             return;
         }
 
+        const target = event.target instanceof Element ? event.target : null;
+        const label = target?.closest('label') || null;
+        const isDirectFieldClick = event.target === field;
+        const isLabelClick = Boolean(label && label.contains(field));
         const wasChecked = checklistClickState.get(field) === true;
 
-        if (!wasChecked) {
+        if (mode === 'erase') {
+            event.preventDefault();
+            event.stopPropagation();
+
+            if (!field.checked) {
+                return;
+            }
+
+            field.checked = false;
+            field.dispatchEvent(new Event('change', { bubbles: true }));
+            draftState.textContent = 'Pilihan dihapus';
+            recordHistoryChange();
+            return;
+        }
+
+        if (isDirectFieldClick || isLabelClick) {
+            if (!wasChecked) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            field.checked = false;
+            field.dispatchEvent(new Event('change', { bubbles: true }));
+            draftState.textContent = 'Pilihan dikosongkan';
+            recordHistoryChange();
             return;
         }
 
         event.preventDefault();
         event.stopPropagation();
 
-        field.checked = false;
+        field.checked = !wasChecked;
         field.dispatchEvent(new Event('change', { bubbles: true }));
-        draftState.textContent = 'Pilihan dikosongkan';
-        recordHistoryChange();
-    }, true);
-
-    form.addEventListener('click', (event) => {
-        if (mode !== 'erase') {
-            return;
-        }
-
-        const field = getChecklistFieldFromTarget(event.target);
-
-        if (!field) {
-            return;
-        }
-
-        event.preventDefault();
-        event.stopPropagation();
-
-        if (!field.checked) {
-            return;
-        }
-
-        field.checked = false;
-        field.dispatchEvent(new Event('change', { bubbles: true }));
-        draftState.textContent = 'Pilihan dihapus';
+        draftState.textContent = field.checked
+            ? 'Pilihan dipilih'
+            : 'Pilihan dikosongkan';
         recordHistoryChange();
     }, true);
 
@@ -1149,6 +1390,8 @@
 
     window.addEventListener('beforeprint', () => {
         commitPendingNumberInput();
+        updateEstimateGrandTotal(false);
+        formatAllRupiahInputs();
         autoGrowAll();
         beginPrintMode();
     });
@@ -1164,6 +1407,10 @@
         fileSlotSelect.value = activeSlot;
     }
 
+    initRupiahInputs();
+    initEstimateAutoTotal();
     loadDraft(activeSlot);
+    updateEstimateGrandTotal(false);
+    formatAllRupiahInputs();
     autoGrowAll();
 })();

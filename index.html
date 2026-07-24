@@ -30,7 +30,6 @@
                 </select>
                 <button type="button" class="tool-btn" data-mark-mode="number">Angka</button>
                 <button type="button" class="tool-btn" data-mark-mode="erase">Hapus</button>
-                <button type="button" class="tool-btn" id="clearMarks">Clear lingkar</button>
                 <button type="button" class="tool-btn" id="resetForm">Reset</button>
                 <button type="button" class="tool-btn primary" id="printPage">Print</button>
             </div>
@@ -187,92 +186,87 @@
                                                             <h2 class="sheet-title">1. BODY AND PAINT</h2>
                     
                     
-                                            <table class="check-table">
+                                            <table class="check-table condition-summary-table">
                             <thead>
                                 <tr>
                                     <th class="col-no">No.</th>
                                     <th class="col-item">Instrumen</th>
-                                    <th colspan="3">Kondisi</th>
+                                    <th class="col-condition">Kondisi</th>
                                     <th class="col-note">Keterangan</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                                                    <tr class="circle-row">
+                                                                    <tr class="circle-row crash-row default-strike-row">
                                         <td class="col-no">1</td>
                                         <td>Crash/tabrak</td>
-                                                                                    <td class="col-choice-wide">
+                                        <td class="condition-cell merged-condition">
+                                            <div class="condition-grid condition-grid-3">
                                                 <label class="circle-choice">
                                                     <input class="circle-input" type="radio" name="item_1" value="Minor">
                                                     <span class="circle-text">Minor</span>
                                                 </label>
-                                            </td>
-                                                                                    <td class="col-choice-wide">
                                                 <label class="circle-choice">
                                                     <input class="circle-input" type="radio" name="item_1" value="Moderate">
                                                     <span class="circle-text">Moderate</span>
                                                 </label>
-                                            </td>
-                                                                                    <td class="col-choice-wide">
                                                 <label class="circle-choice">
                                                     <input class="circle-input" type="radio" name="item_1" value="Major">
                                                     <span class="circle-text">Major</span>
                                                 </label>
-                                            </td>
+                                            </div>
+                                        </td>
                                                                                                                         <td><textarea class="note-input" name="note_1" rows="1"></textarea></td>
                                     </tr>
                                                                     <tr class="circle-row">
                                         <td class="col-no">2</td>
                                         <td>Bekas banjir</td>
-                                                                                    <td class="col-choice-wide">
+                                        <td class="condition-cell merged-condition">
+                                            <div class="condition-grid condition-grid-2">
                                                 <label class="circle-choice">
                                                     <input class="circle-input" type="radio" name="item_2" value="Terindikasi">
                                                     <span class="circle-text">Terindikasi</span>
                                                 </label>
-                                            </td>
-                                                                                    <td class="col-choice-wide">
                                                 <label class="circle-choice">
                                                     <input class="circle-input" type="radio" name="item_2" value="Tidak">
                                                     <span class="circle-text">Tidak</span>
                                                 </label>
-                                            </td>
-                                                                                                                            <td class="col-choice-wide"></td>
-                                                                                <td><textarea class="note-input" name="note_2" rows="1"></textarea></td>
+                                            </div>
+                                        </td>
+                                        <td><textarea class="note-input" name="note_2" rows="1"></textarea></td>
                                     </tr>
                                                                     <tr class="circle-row">
                                         <td class="col-no">3</td>
                                         <td>Spet / Repair</td>
-                                                                                    <td class="col-choice-wide">
+                                        <td class="condition-cell merged-condition">
+                                            <div class="condition-grid condition-grid-2">
                                                 <label class="circle-choice">
                                                     <input class="circle-input" type="radio" name="item_3" value="Ada">
                                                     <span class="circle-text">Ada</span>
                                                 </label>
-                                            </td>
-                                                                                    <td class="col-choice-wide">
                                                 <label class="circle-choice">
                                                     <input class="circle-input" type="radio" name="item_3" value="Tidak">
                                                     <span class="circle-text">Tidak</span>
                                                 </label>
-                                            </td>
-                                                                                                                            <td class="col-choice-wide"></td>
-                                                                                <td><textarea class="note-input" name="note_3" rows="1"></textarea></td>
+                                            </div>
+                                        </td>
+                                        <td><textarea class="note-input" name="note_3" rows="1"></textarea></td>
                                     </tr>
                                                                     <tr class="circle-row">
                                         <td class="col-no">4</td>
                                         <td>Indikasi kebakaran</td>
-                                                                                    <td class="col-choice-wide">
+                                        <td class="condition-cell merged-condition">
+                                            <div class="condition-grid condition-grid-2">
                                                 <label class="circle-choice">
                                                     <input class="circle-input" type="radio" name="item_4" value="Ada">
                                                     <span class="circle-text">Ada</span>
                                                 </label>
-                                            </td>
-                                                                                    <td class="col-choice-wide">
                                                 <label class="circle-choice">
                                                     <input class="circle-input" type="radio" name="item_4" value="Tidak">
                                                     <span class="circle-text">Tidak</span>
                                                 </label>
-                                            </td>
-                                                                                                                            <td class="col-choice-wide"></td>
-                                                                                <td><textarea class="note-input" name="note_4" rows="1"></textarea></td>
+                                            </div>
+                                        </td>
+                                        <td><textarea class="note-input" name="note_4" rows="1"></textarea></td>
                                     </tr>
                                                             </tbody>
                         </table>
@@ -284,7 +278,7 @@
                                     <tr>
                                         <th class="col-no">No.</th>
                                         <th class="col-item">Instrumen</th>
-                                        <th class="col-choice">Baik</th>
+                                        <th class="col-choice bulk-good-trigger" data-bulk-value="Baik">Baik</th>
                                         <th class="col-choice">Kurang</th>
                                         <th class="col-note">Keterangan</th>
                                     </tr>
@@ -730,7 +724,7 @@
                                     <tr>
                                         <th class="col-no">No.</th>
                                         <th class="col-item">Instrumen</th>
-                                        <th class="col-choice">Baik</th>
+                                        <th class="col-choice bulk-good-trigger" data-bulk-value="Baik">Baik</th>
                                         <th class="col-choice">Kurang</th>
                                         <th class="col-note">Keterangan</th>
                                     </tr>
@@ -1036,7 +1030,7 @@
                                     <tr>
                                         <th class="col-no">No.</th>
                                         <th class="col-item">Instrumen</th>
-                                        <th class="col-choice">Baik</th>
+                                        <th class="col-choice bulk-good-trigger" data-bulk-value="Baik">Baik</th>
                                         <th class="col-choice">Kurang</th>
                                         <th class="col-note">Keterangan</th>
                                     </tr>
@@ -1261,7 +1255,7 @@
                                     <tr>
                                         <th class="col-no">No.</th>
                                         <th class="col-item">Instrumen</th>
-                                        <th class="col-choice">Baik</th>
+                                        <th class="col-choice bulk-good-trigger" data-bulk-value="Baik">Baik</th>
                                         <th class="col-choice">Kurang</th>
                                         <th class="col-note">Keterangan</th>
                                     </tr>
@@ -1330,7 +1324,7 @@
                                     <tr>
                                         <th class="col-no">No.</th>
                                         <th class="col-item">Instrumen</th>
-                                        <th class="col-choice">Baik</th>
+                                        <th class="col-choice bulk-good-trigger" data-bulk-value="Baik">Baik</th>
                                         <th class="col-choice">Kurang</th>
                                         <th class="col-note">Keterangan</th>
                                     </tr>
@@ -1500,7 +1494,7 @@
                                     <tr>
                                         <th class="col-no">No.</th>
                                         <th class="col-item">Instrumen</th>
-                                        <th class="col-choice">Baik</th>
+                                        <th class="col-choice bulk-good-trigger" data-bulk-value="Baik">Baik</th>
                                         <th class="col-choice">Kurang</th>
                                         <th class="col-note">Keterangan</th>
                                     </tr>
@@ -1693,7 +1687,7 @@
                                         <tr>
                                             <th class="col-no">No.</th>
                                             <th class="col-item">Instrumen</th>
-                                            <th class="col-choice">Baik</th>
+                                            <th class="col-choice bulk-good-trigger" data-bulk-value="Baik">Baik</th>
                                             <th class="col-choice">Kurang</th>
                                             <th class="col-note">Keterangan</th>
                                         </tr>
@@ -1864,7 +1858,7 @@
                                     <tr>
                                         <th class="col-no">No.</th>
                                         <th class="col-item">Instrumen</th>
-                                        <th class="col-choice">Baik</th>
+                                        <th class="col-choice bulk-good-trigger" data-bulk-value="Baik">Baik</th>
                                         <th class="col-choice">Kurang</th>
                                         <th class="col-note">Keterangan</th>
                                     </tr>
@@ -2158,7 +2152,7 @@
                                     <tr>
                                         <th class="col-no">No.</th>
                                         <th class="col-item">Instrumen</th>
-                                        <th class="col-choice">Baik</th>
+                                        <th class="col-choice bulk-good-trigger" data-bulk-value="Baik">Baik</th>
                                         <th class="col-choice">Kurang</th>
                                         <th class="col-note">Keterangan</th>
                                     </tr>
@@ -2311,7 +2305,7 @@
                                     <tr>
                                         <th class="col-no">No.</th>
                                         <th class="col-item">Instrumen</th>
-                                        <th class="col-choice">Baik</th>
+                                        <th class="col-choice bulk-good-trigger" data-bulk-value="Baik">Baik</th>
                                         <th class="col-choice">Kurang</th>
                                         <th class="col-note">Keterangan</th>
                                     </tr>
@@ -2413,7 +2407,7 @@
                                     <tr>
                                         <th class="col-no">No.</th>
                                         <th class="col-item">Instrumen</th>
-                                        <th class="col-choice">Baik</th>
+                                        <th class="col-choice bulk-good-trigger" data-bulk-value="Baik">Baik</th>
                                         <th class="col-choice">Kurang</th>
                                         <th class="col-note">Keterangan</th>
                                     </tr>
@@ -2498,7 +2492,7 @@
                                     <tr>
                                         <th class="col-no">No.</th>
                                         <th class="col-item">Instrumen</th>
-                                        <th class="col-choice">Baik</th>
+                                        <th class="col-choice bulk-good-trigger" data-bulk-value="Baik">Baik</th>
                                         <th class="col-choice">Kurang</th>
                                         <th class="col-note">Keterangan</th>
                                     </tr>
@@ -2605,7 +2599,7 @@
                                     <tr>
                                         <th class="col-no">No.</th>
                                         <th class="col-item">Instrumen</th>
-                                        <th class="col-choice">Baik</th>
+                                        <th class="col-choice bulk-good-trigger" data-bulk-value="Baik">Baik</th>
                                         <th class="col-choice">Kurang</th>
                                         <th class="col-note">Keterangan</th>
                                     </tr>
@@ -2904,7 +2898,7 @@
                                         <tr>
                                             <th class="col-no">No.</th>
                                             <th class="col-item">Instrumen</th>
-                                            <th class="col-choice">Baik</th>
+                                            <th class="col-choice bulk-good-trigger" data-bulk-value="Baik">Baik</th>
                                             <th class="col-choice">Kurang</th>
                                             <th class="col-note">Keterangan</th>
                                         </tr>
@@ -3061,7 +3055,7 @@
                                     <tr>
                                         <th class="col-no">No.</th>
                                         <th class="col-item">Instrumen</th>
-                                        <th class="col-choice">Baik</th>
+                                        <th class="col-choice bulk-good-trigger" data-bulk-value="Baik">Baik</th>
                                         <th class="col-choice">Kurang</th>
                                         <th class="col-note">Keterangan</th>
                                     </tr>
@@ -3367,7 +3361,7 @@
                                     <tr>
                                         <th class="col-no">No.</th>
                                         <th class="col-item">Instrumen</th>
-                                        <th class="col-choice">Baik</th>
+                                        <th class="col-choice bulk-good-trigger" data-bulk-value="Baik">Baik</th>
                                         <th class="col-choice">Kurang</th>
                                         <th class="col-note">Keterangan</th>
                                     </tr>
@@ -3609,7 +3603,7 @@
                                     <tr>
                                         <th class="col-no">No.</th>
                                         <th class="col-item">Instrumen</th>
-                                        <th class="col-choice">Baik</th>
+                                        <th class="col-choice bulk-good-trigger" data-bulk-value="Baik">Baik</th>
                                         <th class="col-choice">Kurang</th>
                                         <th class="col-note">Keterangan</th>
                                     </tr>
@@ -3660,7 +3654,7 @@
                                     <tr>
                                         <th class="col-no">No.</th>
                                         <th class="col-item">Instrumen</th>
-                                        <th class="col-choice">Baik</th>
+                                        <th class="col-choice bulk-good-trigger" data-bulk-value="Baik">Baik</th>
                                         <th class="col-choice">Kurang</th>
                                         <th class="col-note">Keterangan</th>
                                     </tr>
@@ -3949,7 +3943,7 @@
                                     <tr>
                                         <th class="col-no">No.</th>
                                         <th class="col-item">Instrumen</th>
-                                        <th class="col-choice">Baik</th>
+                                        <th class="col-choice bulk-good-trigger" data-bulk-value="Baik">Baik</th>
                                         <th class="col-choice">Kurang</th>
                                         <th class="col-note">Keterangan</th>
                                     </tr>
@@ -4051,7 +4045,7 @@
                                     <tr>
                                         <th class="col-no">No.</th>
                                         <th class="col-item">Instrumen</th>
-                                        <th class="col-choice">Baik</th>
+                                        <th class="col-choice bulk-good-trigger" data-bulk-value="Baik">Baik</th>
                                         <th class="col-choice">Kurang</th>
                                         <th class="col-note">Keterangan</th>
                                     </tr>
@@ -4123,7 +4117,7 @@
                                     <tr>
                                         <th class="col-no">No.</th>
                                         <th class="col-item">Instrumen</th>
-                                        <th class="col-choice">Baik</th>
+                                        <th class="col-choice bulk-good-trigger" data-bulk-value="Baik">Baik</th>
                                         <th class="col-choice">Kurang</th>
                                         <th class="col-note">Keterangan</th>
                                     </tr>
@@ -4344,7 +4338,7 @@
                                     <tr>
                                         <th class="col-no">No.</th>
                                         <th class="col-item">Instrumen</th>
-                                        <th class="col-choice">Baik</th>
+                                        <th class="col-choice bulk-good-trigger" data-bulk-value="Baik">Baik</th>
                                         <th class="col-choice">Kurang</th>
                                         <th class="col-note">Keterangan</th>
                                     </tr>
@@ -4497,7 +4491,7 @@
                                                 <td class="col-no">208</td>
                                                 <td>STNK</td>
                                                                                                     <td class="document-option-main">
-                                                        <label class="circle-choice" title="Tembus mesin &amp; rangka">
+                                                        <label class="circle-choice document-long-choice" title="Tembus mesin &amp; rangka">
                                                             <input class="circle-input" type="radio" name="item_208" value="Tembus mesin &amp; rangka">
                                                             <span class="circle-text">Tembus mesin &amp; rangka</span>
                                                         </label>
@@ -4517,7 +4511,7 @@
                                                 <td class="col-no">209</td>
                                                 <td>BPKB</td>
                                                                                                     <td class="document-option-main">
-                                                        <label class="circle-choice" title="Tembus mesin &amp; rangka">
+                                                        <label class="circle-choice document-long-choice" title="Tembus mesin &amp; rangka">
                                                             <input class="circle-input" type="radio" name="item_209" value="Tembus mesin &amp; rangka">
                                                             <span class="circle-text">Tembus mesin &amp; rangka</span>
                                                         </label>
@@ -4599,7 +4593,7 @@
                                                 <td class="document-money-cell" colspan="3">
                                                     <label class="document-money-field">
                                                         <span>Rp.</span>
-                                                        <input type="text" name="text_213">
+                                                        <input class="rupiah-input" type="text" inputmode="numeric" autocomplete="off" name="text_213">
                                                     </label>
                                                 </td>
                                             </tr>
@@ -4844,7 +4838,7 @@
                                     <span class="box"></span>
                                 </label>
                             </td>
-                            <td><input type="text" name="estimasi_biaya_1" placeholder="Rp."></td>
+                            <td><input class="estimate-cost-input rupiah-input" type="text" inputmode="numeric" autocomplete="off" name="estimasi_biaya_1" placeholder="Rp."></td>
                         </tr>
                                             <tr>
                             <td style="text-align: center;">2.</td>
@@ -4855,7 +4849,7 @@
                                     <span class="box"></span>
                                 </label>
                             </td>
-                            <td><input type="text" name="estimasi_biaya_2" placeholder="Rp."></td>
+                            <td><input class="estimate-cost-input rupiah-input" type="text" inputmode="numeric" autocomplete="off" name="estimasi_biaya_2" placeholder="Rp."></td>
                         </tr>
                                             <tr>
                             <td style="text-align: center;">3.</td>
@@ -4866,7 +4860,7 @@
                                     <span class="box"></span>
                                 </label>
                             </td>
-                            <td><input type="text" name="estimasi_biaya_3" placeholder="Rp."></td>
+                            <td><input class="estimate-cost-input rupiah-input" type="text" inputmode="numeric" autocomplete="off" name="estimasi_biaya_3" placeholder="Rp."></td>
                         </tr>
                                             <tr>
                             <td style="text-align: center;">4.</td>
@@ -4877,7 +4871,7 @@
                                     <span class="box"></span>
                                 </label>
                             </td>
-                            <td><input type="text" name="estimasi_biaya_4" placeholder="Rp."></td>
+                            <td><input class="estimate-cost-input rupiah-input" type="text" inputmode="numeric" autocomplete="off" name="estimasi_biaya_4" placeholder="Rp."></td>
                         </tr>
                                             <tr>
                             <td style="text-align: center;">5.</td>
@@ -4888,7 +4882,7 @@
                                     <span class="box"></span>
                                 </label>
                             </td>
-                            <td><input type="text" name="estimasi_biaya_5" placeholder="Rp."></td>
+                            <td><input class="estimate-cost-input rupiah-input" type="text" inputmode="numeric" autocomplete="off" name="estimasi_biaya_5" placeholder="Rp."></td>
                         </tr>
                                             <tr>
                             <td style="text-align: center;">6.</td>
@@ -4899,7 +4893,7 @@
                                     <span class="box"></span>
                                 </label>
                             </td>
-                            <td><input type="text" name="estimasi_biaya_6" placeholder="Rp."></td>
+                            <td><input class="estimate-cost-input rupiah-input" type="text" inputmode="numeric" autocomplete="off" name="estimasi_biaya_6" placeholder="Rp."></td>
                         </tr>
                                             <tr>
                             <td style="text-align: center;">7.</td>
@@ -4910,7 +4904,7 @@
                                     <span class="box"></span>
                                 </label>
                             </td>
-                            <td><input type="text" name="estimasi_biaya_7" placeholder="Rp."></td>
+                            <td><input class="estimate-cost-input rupiah-input" type="text" inputmode="numeric" autocomplete="off" name="estimasi_biaya_7" placeholder="Rp."></td>
                         </tr>
                                             <tr>
                             <td style="text-align: center;">8.</td>
@@ -4921,7 +4915,7 @@
                                     <span class="box"></span>
                                 </label>
                             </td>
-                            <td><input type="text" name="estimasi_biaya_8" placeholder="Rp."></td>
+                            <td><input class="estimate-cost-input rupiah-input" type="text" inputmode="numeric" autocomplete="off" name="estimasi_biaya_8" placeholder="Rp."></td>
                         </tr>
                                             <tr>
                             <td style="text-align: center;">9.</td>
@@ -4932,7 +4926,7 @@
                                     <span class="box"></span>
                                 </label>
                             </td>
-                            <td><input type="text" name="estimasi_biaya_9" placeholder="Rp."></td>
+                            <td><input class="estimate-cost-input rupiah-input" type="text" inputmode="numeric" autocomplete="off" name="estimasi_biaya_9" placeholder="Rp."></td>
                         </tr>
                                             <tr>
                             <td style="text-align: center;">10.</td>
@@ -4943,7 +4937,7 @@
                                     <span class="box"></span>
                                 </label>
                             </td>
-                            <td><input type="text" name="estimasi_biaya_10" placeholder="Rp."></td>
+                            <td><input class="estimate-cost-input rupiah-input" type="text" inputmode="numeric" autocomplete="off" name="estimasi_biaya_10" placeholder="Rp."></td>
                         </tr>
                                             <tr>
                             <td style="text-align: center;">11.</td>
@@ -4954,7 +4948,7 @@
                                     <span class="box"></span>
                                 </label>
                             </td>
-                            <td><input type="text" name="estimasi_biaya_11" placeholder="Rp."></td>
+                            <td><input class="estimate-cost-input rupiah-input" type="text" inputmode="numeric" autocomplete="off" name="estimasi_biaya_11" placeholder="Rp."></td>
                         </tr>
                                             <tr>
                             <td style="text-align: center;">12.</td>
@@ -4965,7 +4959,7 @@
                                     <span class="box"></span>
                                 </label>
                             </td>
-                            <td><input type="text" name="estimasi_biaya_12" placeholder="Rp."></td>
+                            <td><input class="estimate-cost-input rupiah-input" type="text" inputmode="numeric" autocomplete="off" name="estimasi_biaya_12" placeholder="Rp."></td>
                         </tr>
                                             <tr>
                             <td style="text-align: center;">13.</td>
@@ -4976,11 +4970,11 @@
                                     <span class="box"></span>
                                 </label>
                             </td>
-                            <td><input type="text" name="estimasi_biaya_13" placeholder="Rp."></td>
+                            <td><input class="estimate-cost-input rupiah-input" type="text" inputmode="numeric" autocomplete="off" name="estimasi_biaya_13" placeholder="Rp."></td>
                         </tr>
                                         <tr>
                         <th colspan="3">Grand Total</th>
-                        <td><input type="text" name="grand_total" placeholder="Rp."></td>
+                        <td><input class="grand-total-input rupiah-input" type="text" inputmode="numeric" autocomplete="off" name="grand_total" placeholder="Rp." readonly></td>
                     </tr>
                 </tbody>
             </table>
